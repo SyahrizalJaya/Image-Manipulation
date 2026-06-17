@@ -6,7 +6,7 @@ import pytest
 from PIL import Image
 
 import encoder
-from decoder import decode_basic, decode_edge_adaptive, decode_randomized
+from decoder import decode_auto, decode_basic, decode_edge_adaptive, decode_randomized
 from encoder import encode_basic, encode_edge_adaptive, encode_randomized
 from utils import (
     HEADER_BITS,
@@ -14,17 +14,21 @@ from utils import (
     LEGACY_VERSION,
     MAGIC,
     METHOD_BASIC,
+    METHOD_EDGE,
     NONCE_SIZE,
     SALT_SIZE,
     AuthenticationError,
     CapacityError,
     HeaderError,
     UnsupportedImageError,
+    VISIBLE_WATERMARK_METADATA_KEY,
     apply_visible_watermark,
     build_header,
     bytes_to_bits,
     parse_header,
     randomized_positions,
+    save_stego_image,
+    visible_watermark_metadata,
 )
 
 
@@ -215,6 +219,16 @@ def test_visible_watermark_changes_image_without_lsb(tmp_path):
     assert list(watermarked.getdata()) != list(original.getdata())
 
 
+def test_visible_watermark_metadata_can_be_recovered(tmp_path):
+    cover = make_cover(tmp_path / "cover.png", size=(160, 100))
+    output = tmp_path / "visible.png"
+    watermarked = apply_visible_watermark(Image.open(cover), "IPUL Team")
+
+    save_stego_image(watermarked, output, metadata={VISIBLE_WATERMARK_METADATA_KEY: "IPUL Team"})
+
+    assert visible_watermark_metadata(output) == "IPUL Team"
+
+
 def test_visible_and_invisible_watermarks_can_coexist(tmp_path):
     cover = make_cover(tmp_path / "cover.png", size=(160, 100))
     output = tmp_path / "both.png"
@@ -230,6 +244,18 @@ def test_visible_and_invisible_watermarks_can_coexist(tmp_path):
 
     assert result["visible_watermark"] is True
     assert decode_edge_adaptive(output, password="password") == "visible plus hidden"
+    assert visible_watermark_metadata(output) == "IPUL Team"
+
+
+def test_auto_decode_detects_edge_adaptive_message(tmp_path):
+    cover = make_cover(tmp_path / "cover.png", size=(160, 100))
+    output = tmp_path / "edge.png"
+    encode_edge_adaptive(cover, output, "auto detected", use_aes=True, password="password")
+
+    message, method = decode_auto(output, password="password")
+
+    assert message == "auto detected"
+    assert method == METHOD_EDGE
 
 
 def test_header_magic_and_version_validation():

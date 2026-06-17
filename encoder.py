@@ -15,6 +15,8 @@ from utils import (
     METHOD_RANDOM,
     NONCE_SIZE,
     SALT_SIZE,
+    VISIBLE_WATERMARK_METADATA_KEY,
+    VISIBLE_WATERMARK_MODE_KEY,
     AuthenticationError,
     adaptive_compress,
     apply_visible_watermark,
@@ -154,7 +156,13 @@ def encode_basic(
     positions = sequential_positions(image, prepared.stored_bytes * 8, start=HEADER_BITS)
     stego = _embed_header_and_payload(image, header, prepared.payload, positions)
     output, _, warnings = resolve_output_path(input_path, output_path, input_format)
-    save_stego_image(stego, output)
+    metadata = None
+    if visible_watermark_text:
+        metadata = {
+            VISIBLE_WATERMARK_METADATA_KEY: visible_watermark_text.strip(),
+            VISIBLE_WATERMARK_MODE_KEY: "visible+invisible",
+        }
+    save_stego_image(stego, output, metadata=metadata)
     return _result(image, input_format, output, prepared, warnings, bool(visible_watermark_text))
 
 
@@ -187,7 +195,13 @@ def encode_randomized(
     positions = randomized_positions(image, key, prepared.stored_bytes * 8, salt=prepared.salt, start=HEADER_BITS)
     stego = _embed_header_and_payload(image, header, prepared.payload, positions)
     output, _, warnings = resolve_output_path(input_path, output_path, input_format)
-    save_stego_image(stego, output)
+    metadata = None
+    if visible_watermark_text:
+        metadata = {
+            VISIBLE_WATERMARK_METADATA_KEY: visible_watermark_text.strip(),
+            VISIBLE_WATERMARK_MODE_KEY: "visible+invisible",
+        }
+    save_stego_image(stego, output, metadata=metadata)
     return _result(image, input_format, output, prepared, warnings, bool(visible_watermark_text))
 
 
@@ -218,7 +232,13 @@ def encode_edge_adaptive(
     positions = edge_adaptive_positions(image, prepared.stored_bytes * 8, start=HEADER_BITS)
     stego = _embed_header_and_payload(image, header, prepared.payload, positions)
     output, _, warnings = resolve_output_path(input_path, output_path, input_format)
-    save_stego_image(stego, output)
+    metadata = None
+    if visible_watermark_text:
+        metadata = {
+            VISIBLE_WATERMARK_METADATA_KEY: visible_watermark_text.strip(),
+            VISIBLE_WATERMARK_MODE_KEY: "visible+invisible",
+        }
+    save_stego_image(stego, output, metadata=metadata)
     return _result(image, input_format, output, prepared, warnings, bool(visible_watermark_text))
 
 

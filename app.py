@@ -19,15 +19,19 @@ from analysis import (
     generate_combined_histogram,
     generate_difference_map,
 )
-from decoder import decode_basic, decode_edge_adaptive, decode_randomized
+from decoder import decode_auto, decode_basic, decode_edge_adaptive, decode_randomized
 from encoder import encode_basic, encode_edge_adaptive, encode_randomized
 from metrics import evaluate_quality
 from utils import (
+    HeaderError,
     SteganographyError,
+    VISIBLE_WATERMARK_METADATA_KEY,
+    VISIBLE_WATERMARK_MODE_KEY,
     apply_visible_watermark,
     load_image,
     resolve_output_path,
     save_stego_image,
+    visible_watermark_metadata,
 )
 
 
@@ -44,6 +48,11 @@ METHOD_LABELS = {
     "basic": "Basic LSB",
     "random": "Password-randomized LSB",
     "edge": "Edge-adaptive LSB",
+}
+METHOD_ID_LABELS = {
+    1: "Basic LSB",
+    2: "Password-randomized LSB",
+    3: "Edge-adaptive LSB",
 }
 DEMO_WATERMARK_TEXT = "IPUL Team"
 
@@ -296,7 +305,13 @@ class SteganographyApp:
 
     def _handle_error(self, exc: Exception) -> None:
         self._set_busy(False)
-        message = str(exc) if isinstance(exc, (SteganographyError, ValueError, FileNotFoundError)) else "An unexpected error occurred."
+        if isinstance(exc, HeaderError) and "header" in str(exc).lower():
+            message = (
+                "No hidden LSB message was found in this image. "
+                "Decode only images created with the Invisible LSB watermark option enabled."
+            )
+        else:
+            message = str(exc) if isinstance(exc, (SteganographyError, ValueError, FileNotFoundError)) else "An unexpected error occurred."
         self.status.set(f"Error: {message}")
         messagebox.showerror("Steganography error", message)
 
@@ -373,7 +388,14 @@ class SteganographyApp:
                 image, input_format = load_image(input_path)
                 watermarked = apply_visible_watermark(image, visible_text)
                 output, _, warnings = resolve_output_path(input_path, output_path, input_format)
-                save_stego_image(watermarked, output)
+                save_stego_image(
+                    watermarked,
+                    output,
+                    metadata={
+                        VISIBLE_WATERMARK_METADATA_KEY: visible_text,
+                        VISIBLE_WATERMARK_MODE_KEY: "visible",
+                    },
+                )
                 result = {
                     "output_path": output,
                     "warnings": warnings,
@@ -458,20 +480,34 @@ class SteganographyApp:
 
         def worker():
             started = time.perf_counter()
-            if method == "random":
-                message = decode_randomized(image_path, key)
-            elif method == "edge":
-                message = decode_edge_adaptive(image_path, password=key or None)
-            else:
-                message = decode_basic(image_path, password=key or None)
-            return message, time.perf_counter() - started
+            try:
+                message, detected_method = decode_auto(image_path, password=key or None)
+                return message, detected_method, "invisible", time.perf_counter() - started
+            except HeaderError:
+                visible_text = visible_watermark_metadata(image_path)
+                if visible_text:
+                    return visible_text, None, "visible", time.perf_counter() - started
+                raise
 
         def on_success(result) -> None:
-            message, runtime = result
+            message, detected_method, watermark_type, runtime = result
             self._set_text(self.decoded_text, message)
+            if watermark_type == "visible":
+                result_text = (
+                    "Detected watermark: Visible watermark\n"
+                    f"Recovered visible text: {len(message)} characters\n"
+                    f"Decoding time: {runtime:.4f} seconds"
+                )
+            else:
+                result_text = (
+                    f"Detected watermark: Invisible LSB\n"
+                    f"Detected method: {METHOD_ID_LABELS.get(detected_method, 'Unknown')}\n"
+                    f"Recovered characters: {len(message)}\n"
+                    f"Decoding time: {runtime:.4f} seconds"
+                )
             self._set_text(
                 self.decode_result,
-                f"Method: {METHOD_LABELS[method]}\nRecovered characters: {len(message)}\nDecoding time: {runtime:.4f} seconds",
+                result_text,
             )
             self.decode_preview.show(image_path)
             self.status.set("Decoding finished.")

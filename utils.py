@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, PngImagePlugin
 
 try:
     from cryptography.exceptions import InvalidTag
@@ -26,6 +26,8 @@ except ImportError:  # pragma: no cover - depends on local environment
 
 SUPPORTED_FORMATS = {"PNG", "JPEG", "BMP", "TIFF", "WEBP"}
 MAGIC = b"STEGDEMO"
+VISIBLE_WATERMARK_METADATA_KEY = "stegdemo.visible_watermark"
+VISIBLE_WATERMARK_MODE_KEY = "stegdemo.watermark_mode"
 LEGACY_VERSION = 1
 VERSION = 2
 METHOD_BASIC = 1
@@ -549,10 +551,31 @@ def resolve_output_path(
     return output, "PNG", warnings
 
 
-def save_stego_image(image: Image.Image, output_path: str | Path, save_format: str = "PNG") -> None:
+def save_stego_image(
+    image: Image.Image,
+    output_path: str | Path,
+    save_format: str = "PNG",
+    metadata: dict[str, str] | None = None,
+) -> None:
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
-    image.save(output, format="PNG")
+    png_info = None
+    if metadata:
+        png_info = PngImagePlugin.PngInfo()
+        for key, value in metadata.items():
+            png_info.add_text(key, value)
+    image.save(output, format="PNG", pnginfo=png_info)
+
+
+def visible_watermark_metadata(image_path: str | Path) -> str | None:
+    try:
+        image = Image.open(image_path)
+        value = image.info.get(VISIBLE_WATERMARK_METADATA_KEY)
+    except Exception:
+        return None
+    if not isinstance(value, str) or not value.strip():
+        return None
+    return value.strip()
 
 
 def human_size(num_bytes: int) -> str:

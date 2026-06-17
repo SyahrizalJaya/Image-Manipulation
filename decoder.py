@@ -130,6 +130,33 @@ def decode_edge_adaptive(image_path: str | Path, password: str | None = None) ->
     return _decode_with_fallback(image_path, METHOD_EDGE, password)
 
 
+def decode_auto(image_path: str | Path, password: str | None = None) -> tuple[str, int]:
+    image, _ = load_image(image_path)
+    rgb = prepare_image_for_lsb(image)
+    pixels = rgb.tobytes()
+    bits = _read_bits_from_pixels(pixels, sequential_positions(image, HEADER_BITS))
+    header = parse_header(bits_to_bytes(bits))
+    if header.version != VERSION:
+        for method in (METHOD_BASIC, METHOD_RANDOM, METHOD_EDGE):
+            try:
+                return _decode_legacy(image_path, method, password), method
+            except HeaderError:
+                continue
+        raise HeaderError("Legacy hidden message could not be decoded automatically.")
+    validate_payload_length(image, header)
+    bit_count = header.payload_length * 8
+    if header.method == METHOD_RANDOM:
+        if not password:
+            raise AuthenticationError("Randomized LSB decoding requires the original password/key.")
+        positions = randomized_positions(image, password, bit_count, salt=header.salt, start=HEADER_BITS)
+    elif header.method == METHOD_EDGE:
+        positions = edge_adaptive_positions(image, bit_count, start=HEADER_BITS)
+    else:
+        positions = sequential_positions(image, bit_count, start=HEADER_BITS)
+    payload = bits_to_bytes(_read_bits_from_pixels(pixels, positions))
+    return _decode_payload(payload, header, password), header.method
+
+
 def decode_message(stego_image_path):
     """Backward-compatible wrapper for the original project workflow."""
     message = decode_basic(stego_image_path)
