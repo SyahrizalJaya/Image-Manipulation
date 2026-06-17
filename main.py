@@ -43,23 +43,34 @@ def print_capacity(report: dict) -> None:
     print(f"Capacity used: {report['capacity_used_percent']:.4f}%")
 
 
+def print_payload_summary(result: dict) -> None:
+    print(f"AES encrypted: {'yes' if result['encrypted'] else 'no'}")
+    print(f"Compression used: {'yes' if result['compressed'] else 'no'}")
+    print(f"Original message: {human_size(result['original_message_bytes'])}")
+    print(f"Stored payload: {human_size(result['stored_payload_bytes'])}")
+    print(f"Size reduction: {result['compression_reduction_percent']:.2f}%")
+
+
 def basic_encode_menu() -> None:
     input_path = prompt_path("Input image path: ")
     output_path = prompt_path("Output image path (leave blank for auto): ") or None
     message = input("Secret message: ")
-    use_aes = prompt_yes_no("Encrypt with AES if available?", default=False)
-    password = None
-    if use_aes:
-        if aes_available():
-            password = input("AES password: ")
-        else:
-            print("Warning: cryptography is not installed; message will be embedded without AES.")
+    use_compression = prompt_yes_no("Use adaptive compression?", default=True)
+    use_aes = prompt_yes_no("Encrypt with AES-GCM?", default=False)
+    password = input("AES password: ") if use_aes else None
 
-    result = encode_basic(input_path, output_path, message, use_aes=use_aes, password=password)
+    result = encode_basic(
+        input_path,
+        output_path,
+        message,
+        use_aes=use_aes,
+        password=password,
+        use_compression=use_compression,
+    )
     print_warnings(result["warnings"])
     print(f"Saved stego image: {result['output_path']}")
     print(f"Input format: {result['input_format']} -> saved as {result['save_format']}")
-    print(f"AES encrypted: {'yes' if result['encrypted'] else 'no'}")
+    print_payload_summary(result)
     print_capacity(result["capacity"])
 
 
@@ -76,12 +87,20 @@ def randomized_encode_menu() -> None:
     output_path = prompt_path("Output image path (leave blank for auto): ") or None
     key = input("Password/key: ")
     message = input("Secret message: ")
-    use_aes = prompt_yes_no("Encrypt with AES if available?", default=True)
-    result = encode_randomized(input_path, output_path, message, key, use_aes=use_aes)
+    use_compression = prompt_yes_no("Use adaptive compression?", default=True)
+    use_aes = prompt_yes_no("Encrypt with AES-GCM?", default=True)
+    result = encode_randomized(
+        input_path,
+        output_path,
+        message,
+        key,
+        use_aes=use_aes,
+        use_compression=use_compression,
+    )
     print_warnings(result["warnings"])
     print(f"Saved stego image: {result['output_path']}")
     print(f"Input format: {result['input_format']} -> saved as {result['save_format']}")
-    print(f"AES encrypted: {'yes' if result['encrypted'] else 'no'}")
+    print_payload_summary(result)
     print_capacity(result["capacity"])
 
 
@@ -97,15 +116,21 @@ def edge_encode_menu() -> None:
     input_path = prompt_path("Input image path: ")
     output_path = prompt_path("Output image path (leave blank for auto): ") or None
     message = input("Secret message: ")
-    use_aes = prompt_yes_no("Encrypt with AES if available?", default=True)
-    password = None
-    if use_aes:
-        password = input("AES password: ") if aes_available() else None
-    result = encode_edge_adaptive(input_path, output_path, message, use_aes=use_aes, password=password)
+    use_compression = prompt_yes_no("Use adaptive compression?", default=True)
+    use_aes = prompt_yes_no("Encrypt with AES-GCM?", default=True)
+    password = input("AES password: ") if use_aes else None
+    result = encode_edge_adaptive(
+        input_path,
+        output_path,
+        message,
+        use_aes=use_aes,
+        password=password,
+        use_compression=use_compression,
+    )
     print_warnings(result["warnings"])
     print(f"Saved stego image: {result['output_path']}")
     print(f"Input format: {result['input_format']} -> saved as {result['save_format']}")
-    print(f"AES encrypted: {'yes' if result['encrypted'] else 'no'}")
+    print_payload_summary(result)
     print_capacity(result["capacity"])
 
 
@@ -183,6 +208,7 @@ def quality_menu() -> None:
     print(f"MSE: {result['mse']:.6f}")
     psnr = result["psnr"]
     print(f"PSNR: {'infinite' if math.isinf(psnr) else f'{psnr:.2f} dB'}")
+    print(f"SSIM: {result['ssim']:.6f}")
     print_capacity(result["capacity"])
 
     if prompt_yes_no("Run robustness/demo conversion tests?", default=True):

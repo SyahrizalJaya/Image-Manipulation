@@ -1,0 +1,6 @@
+Pillow
+cryptography
+numpy
+scikit-image
+matplotlib
+pytest

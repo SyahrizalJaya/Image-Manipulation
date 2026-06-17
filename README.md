@@ -1,172 +1,186 @@
-# Image Steganography Demo
+# Image Manipulation: LSB Steganography Desktop App
 
-This project is a Python image steganography demo with basic sequential LSB, password-randomized LSB, edge-adaptive LSB, image quality metrics, robustness testing, and simple LSB steganalysis. It includes both a terminal menu and a small desktop app.
+Image Manipulation is an academic Python desktop application for hiding and
+recovering text messages inside lossless images using Least Significant Bit
+(LSB) steganography. It includes a Tkinter GUI, a terminal menu, quality
+metrics, visual analysis tools, and controlled benchmark scripts.
+
+The project keeps the core modules in the repository root so existing commands
+and imports remain simple for presentation use.
+
+## Main Features
+
+- Basic sequential LSB.
+- Password-randomized LSB with salt-derived position ordering.
+- Edge-adaptive LSB that prioritizes high-detail regions.
+- AES-GCM encryption with fail-closed password and dependency validation.
+- Adaptive zlib compression that is used only when it reduces payload size.
+- Structured header v2 with method, flags, salt, nonce, payload length, and
+  integrity checks.
+- Legacy v1 decoding compatibility.
+- UTF-8 and emoji support.
+- PNG stego output with alpha preservation where practical.
+- MSE, PSNR, SSIM, BER, capacity, and runtime reporting.
+- RGB histogram comparison and amplified pixel-difference maps.
+- Benchmark and robustness scripts.
+- Presentation-ready desktop GUI.
+
+## Folder Structure
+
+```text
+Image-Manipulation/
+|-- app.py
+|-- main.py
+|-- encoder.py
+|-- decoder.py
+|-- utils.py
+|-- metrics.py
+|-- analysis.py
+|-- requirements.txt
+|-- README.md
+|-- .gitignore
+|-- images/
+|   |-- input/
+|   `-- output/
+|-- results/
+|   |-- csv/
+|   `-- figures/
+|-- experiments/
+|   |-- __init__.py
+|   |-- benchmark.py
+|   `-- robustness_benchmark.py
+|-- tests/
+|-- docs/
+|   |-- repository_audit.md
+|   |-- gui_smoke_test.md
+|   |-- experiment_guide.md
+|   |-- architecture.md
+|   |-- demo_guide.md
+|   |-- validation_report.md
+|   |-- final_experiment_summary.md
+|   `-- project_structure.md
+|-- cleanup_archive/
+`-- codex_plan/
+```
+
+See `docs/project_structure.md` for a short explanation of each folder.
 
 ## Installation
 
-```bash
-python -m pip install pillow
+From the repository root:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+pip install -r requirements.txt
 ```
 
-Optional AES encryption uses `cryptography`:
+## Run the Desktop GUI
 
-```bash
-python -m pip install cryptography
+```powershell
+.\.venv\Scripts\python.exe app.py
 ```
 
-If `cryptography` is not installed, the program still runs and clearly warns that AES encryption was skipped.
+The GUI supports encoding, decoding, quality checks, image previews, histogram
+generation, amplified difference maps, and CSV export for analysis results.
 
-## Run
+## Run the CLI
 
-```bash
-python main.py
+```powershell
+.\.venv\Scripts\python.exe main.py
 ```
 
-To open the desktop app directly:
+The CLI keeps the original menu workflow for quick demos and compatibility.
 
-```bash
-python app.py
+## Run Tests
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest -q
 ```
 
-Menu:
+The test suite uses generated temporary images and does not require private
+assets.
 
-```text
-[1] Basic LSB Encode
-[2] Basic LSB Decode
-[3] Advanced Randomized LSB Encode
-[4] Advanced Randomized LSB Decode
-[5] Edge-Adaptive LSB Encode
-[6] Edge-Adaptive LSB Decode
-[7] Image Quality Evaluation
-[8] LSB Steganalysis
-[9] Launch Desktop App
-[10] Exit
+## Run Benchmark
+
+```powershell
+.\.venv\Scripts\python.exe experiments\benchmark.py
 ```
 
-## Desktop App
+This compares Basic, Password-randomized, and Edge-adaptive LSB across smooth,
+textured, and edge-heavy generated images at 10%, 25%, 50%, and 75% payload
+levels.
 
-The desktop app uses Python's built-in Tkinter library. It provides tabs for:
+## Run Robustness Benchmark
 
-- encoding an image
-- decoding a hidden message
-- checking image quality
-- running a conversion/compression robustness demo
-- analyzing LSB statistics for simple steganalysis
-
-You can launch it from the terminal menu with option `9`, or directly with `python app.py`.
-
-## Supported Formats
-
-Input formats:
-
-- PNG
-- JPG / JPEG
-- BMP
-- TIFF
-- WEBP, if your Pillow installation supports it
-
-The program keeps the same output format when it is safe:
-
-- PNG saves as PNG.
-- BMP saves as BMP.
-- TIFF saves as TIFF.
-- WEBP saves as lossless WEBP.
-- JPEG/JPG inputs are automatically saved as PNG for steganography output, because JPEG compression is lossy and usually destroys LSB data.
-
-## Steganography Methods
-
-Basic LSB stores the hidden message in the least significant bits of image channels in normal sequential order. It is easy to understand and useful for demonstrating the core idea, but it is also easy to detect or attack.
-
-Advanced Randomized LSB asks for a password/key. The key generates a deterministic random pixel/channel order, so the same key is required for decoding. This is more secure than sequential LSB because the hidden bits are scattered across the image instead of being placed from the beginning.
-
-Edge-Adaptive LSB ranks pixels by local edge/detail strength and hides data in the strongest-detail areas first. Small changes are less visible in textured or edge-heavy regions, so this method improves imperceptibility compared with simply writing from the start of the image.
-
-If AES is enabled and `cryptography` is installed, the message is encrypted before embedding. With randomized LSB, the same password/key is used for the random order and AES encryption.
-
-## Demo Flow
-
-Start the menu:
-
-```bash
-python main.py
+```powershell
+.\.venv\Scripts\python.exe experiments\robustness_benchmark.py
 ```
 
-Basic encode:
+This applies controlled transformations such as PNG re-save, BMP conversion,
+JPEG compression, resizing, blur, and light image noise.
 
-```text
-Choose an option: 1
-Input image path: sample.png
-Output image path (leave blank for auto):
-Secret message: Hello from UTF-8: 你好
-Encrypt with AES if available? (y/N): n
-```
+## Output Folders
 
-Basic decode:
+- `images/output/` stores demo stego images.
+- `results/csv/` stores benchmark and robustness CSV files.
+- `results/figures/` stores generated benchmark charts and analysis figures.
+- `cleanup_archive/` stores intermediate generated experiment images that are
+  not required for the final presentation folder.
 
-```text
-Choose an option: 2
-Stego image path: sample_stego.png
-AES password if encrypted (leave blank if not encrypted):
-```
+Expected experiment outputs include:
 
-Randomized encode:
+- `results/csv/benchmark_results.csv`
+- `results/csv/robustness_results.csv`
+- `results/figures/psnr_versus_payload.png`
+- `results/figures/ssim_versus_payload.png`
+- `results/figures/encoding_time_versus_payload.png`
+- `results/figures/changed_pixels_versus_payload.png`
 
-```text
-Choose an option: 3
-Input image path: sample.bmp
-Output image path (leave blank for auto):
-Password/key: my-secret-key
-Secret message: randomized secret
-Encrypt with AES if available? (Y/n): y
-```
+## Short Demo Workflow
 
-Randomized decode:
+1. Open the GUI.
+2. Select a PNG cover image from `images/input/`.
+3. Enter a short secret message.
+4. Choose Edge-adaptive LSB.
+5. Enable AES-GCM encryption and adaptive compression.
+6. Enter a password and encode.
+7. Review MSE, PSNR, SSIM, capacity, runtime, and previews.
+8. Decode the generated stego image with the same password.
+9. Open the Analysis tab and show quality metrics, LSB statistics, histogram,
+   and amplified difference map.
 
-```text
-Choose an option: 4
-Stego image path: sample_stego.bmp
-Password/key: my-secret-key
-```
+## Metrics and Analysis
 
-Quality evaluation:
+- MSE measures mean squared RGB-channel error. Lower is better.
+- PSNR uses maximum pixel value 255. Higher is generally better.
+- SSIM estimates structural similarity. Values near 1 indicate high similarity.
+- BER is used only in controlled experiments where the expected payload is
+  known.
+- Histograms compare RGB intensity distributions and ignore alpha.
+- Difference maps amplify absolute RGB differences for visualization.
 
-```text
-Choose an option: 5
-Original image path: sample.png
-Stego image path: sample_stego.png
-Payload size in bytes if known (leave blank for 0):
-Run robustness/demo conversion tests? (Y/n): y
-```
+## Security and Limitations
 
-## Quality Metrics
+- AES-GCM protects message confidentiality and integrity when encryption is
+  enabled, but this is still an academic demonstration.
+- LSB steganography is fragile under JPEG compression, resizing, blur, noise,
+  screenshots, and social-media recompression.
+- JPEG cover images are accepted, but stego output is saved as PNG.
+- Histogram analysis and LSB statistics are educational indicators only, not
+  definitive steganalysis.
+- This project is a presentation-ready academic desktop application, not
+  production security software.
 
-The quality menu reports:
+## Documentation
 
-- MSE
-- PSNR
-- total LSB channel capacity
-- usable payload capacity
-- payload bytes used
-- percentage of capacity used
-
-It can also run a robustness demo by converting the stego image to PNG, BMP, and compressed JPEG in a temporary folder. Temporary files are deleted automatically after the test.
-
-## Steganalysis
-
-The Steganalysis tab inspects the least significant bit plane and reports:
-
-- zero/one bit counts
-- one-bit ratio
-- LSB entropy
-- per-channel ratios
-- a simple low/medium/high suspicion estimate
-
-This is a teaching/demo feature, not proof that an image does or does not contain hidden data. It is useful for showing that encrypted or randomized payloads can make the LSB plane look more statistically random.
-
-## Limitations
-
-- LSB steganography is fragile under lossy compression, resizing, filtering, screenshots, or social media re-encoding.
-- JPEG is especially unsafe for direct LSB embedding because saving JPEG changes pixel values. This project warns about JPEG and saves a PNG stego copy instead.
-- Randomized and edge-adaptive LSB improve the basic method, but they are still not full steganalysis-resistant systems.
-- AES protects the message content only when `cryptography` is installed and encryption is enabled.
-- Decoding requires the correct method. A basic decode will not decode a randomized message, and randomized decode requires the same key used for encoding.
+- `docs/architecture.md` explains the module design and workflows.
+- `docs/demo_guide.md` provides a 3-5 minute presentation plan.
+- `docs/validation_report.md` records the final validation status.
+- `docs/final_experiment_summary.md` summarizes benchmark and robustness CSV
+  results.
+- `docs/project_structure.md` explains the cleaned repository layout.
+- `docs/repository_audit.md` records the initial repository audit.
+- `docs/gui_smoke_test.md` records GUI smoke-test coverage.
+- `docs/experiment_guide.md` explains benchmark and robustness experiments.

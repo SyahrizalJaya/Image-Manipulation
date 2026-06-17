@@ -1,0 +1,14 @@
+metric,value
+mse,2.7379918981481482e-05
+psnr,93.75648202166637
+ssim,0.9999999647449013
+changed_pixels,441
+changed_channels,757
+changed_pixel_percent,0.00478515625
+maximum_absolute_difference,1
+mean_absolute_difference,2.7379918981481482e-05
+cover_lsb_ones_ratio,0.48167900028935184
+stego_lsb_ones_ratio,0.4816720920138889
+cover_lsb_entropy,0.9990312759208877
+stego_lsb_entropy,0.999030545068333
+stego_suspicion,Medium
